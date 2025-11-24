@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Grandparents by Insurance</title>
+
+  <style>
+    html,
+    body {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
+
+    #swipeButton {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: white;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .swipe-control {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      width: 200px;
+    }
+
+    .transparency-container {
+      padding: 10px;
+      background-color: white;
+      border: 1px solid #ccc;
+      margin-top: 5px;
+    }
+
+    .transparency-label {
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    .transparency-slider {
+      width: 100%;
+    }
+  </style>
+
+  <!-- ArcGIS JS API -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.30/"></script>
+</head>
+
+<body>
+
+  <div id="viewDiv" style="height: 100%; width: 100%;"></div>
+
+  <!-- Swipe layer selector controls -->
+  <div class="swipe-control">
+    <label for="leadingLayerSelect">Leading Layer:</label>
+    <select id="leadingLayerSelect"></select><br/><br/>
+    <label for="trailingLayerSelect">Trailing Layer:</label>
+    <select id="trailingLayerSelect"></select><br/>
+    <button id="swipeButton">Activate Swipe</button>
+  </div>
+
+  <script>
+    require([
+      "esri/WebMap",
+      "esri/views/MapView",
+      "esri/widgets/LayerList",
+      "esri/widgets/Expand",
+      "esri/widgets/BasemapGallery",
+      "esri/widgets/Home",
+      "esri/widgets/Swipe",
+      "esri/widgets/Legend"
+    ], function(WebMap, MapView, LayerList, Expand, BasemapGallery, Home, Swipe, Legend) {
+
+      const webmap = new WebMap({
+        portalItem: {
+          id: "24b8af4edd7a45db80eaa9aa34e27499" // Replace with your WebMap ID
+        }
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: webmap
+      });
+
+      let swipe; // declare swipe widget reference
+
+      view.when(() => {
+        view.ui.move("zoom", "top-left");
+
+        // Home button
+        const homeButton = new Home({ view });
+        view.ui.add(homeButton, "top-left");
+
+        // Layer list
+        const layerList = new LayerList({ view });
+        const dataLayers = new Expand({
+          view,
+          content: layerList,
+          group: 'button-widget'
+        });
+        view.ui.add(dataLayers, "top-right");
+
+        // Basemap gallery
+        const basemapGallery = new BasemapGallery({ view });
+        const baseMaps = new Expand({
+          view,
+          content: basemapGallery,
+          group: 'button-widget'
+        });
+        view.ui.add(baseMaps, "top-right");
+
+        // Legend
+        const legend = new Legend({ view });
+        view.ui.add(legend, "bottom-right");
+
+        // Transparency sliders
+        const transparencyDiv = document.createElement("div");
+        webmap.layers.forEach((layer, index) => {
+          const layerDiv = document.createElement("div");
+          layerDiv.className = "transparency-container";
+
+          const label = document.createElement("div");
+          label.className = "transparency-label";
+          label.textContent = layer.title;
+
+          const slider = document.createElement("input");
+          slider.type = "range";
+          slider.className = "transparency-slider";
+          slider.min = 0;
+          slider.max = 1;
+          slider.step = 0.01;
+          slider.value = layer.opacity;
+
+          slider.addEventListener("input", () => {
+            layer.opacity = parseFloat(slider.value);
+          });
+
+          layerDiv.appendChild(label);
+          layerDiv.appendChild(slider);
+          transparencyDiv.appendChild(layerDiv);
+        });
+
+        const transparencyExpand = new Expand({
+          view,
+          content: transparencyDiv,
+          group: 'button-widget'
+        });
+        view.ui.add(transparencyExpand, "top-right");
+
+        // Populate dropdowns
+        const leadingSelect = document.getElementById("leadingLayerSelect");
+        const trailingSelect = document.getElementById("trailingLayerSelect");
+
+        webmap.layers.forEach((layer, i) => {
+          const opt1 = document.createElement("option");
+          opt1.value = i;
+          opt1.textContent = layer.title;
+          leadingSelect.appendChild(opt1);
+
+          const opt2 = document.createElement("option");
+          opt2.value = i;
+          opt2.textContent = layer.title;
+          trailingSelect.appendChild(opt2);
+        });
+
+        // Swipe activation
+        document.getElementById("swipeButton").addEventListener("click", () => {
+          const leadingIndex = parseInt(leadingSelect.value);
+          const trailingIndex = parseInt(trailingSelect.value);
+
+          if (swipe) view.ui.remove(swipe); // remove previous swipe if any
+
+          swipe = new Swipe({
+            view,
+            leadingLayers: [webmap.layers.getItemAt(leadingIndex)],
+            trailingLayers: [webmap.layers.getItemAt(trailingIndex)],
+            position: 50
+          });
+
+          view.ui.add(swipe);
+        });
+
+      });
+    });
+  </script>
+
+</body>
+</html>
